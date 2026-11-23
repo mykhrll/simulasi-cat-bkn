@@ -20,6 +20,8 @@
   <link id="pwa-manifest-link" rel="manifest" />
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Optional Local Environment Config (Ignored by Git via .gitignore) -->
+  <script src="env.js" onerror="window.ENV = window.ENV || {};"></script>
   <!-- Google Fonts: Inter & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -437,23 +439,30 @@
         <!-- Left / Main Question Card (8 cols on desktop) -->
         <div class="lg:col-span-8 bg-white rounded-2xl cat-shadow border border-slate-200 overflow-hidden">
           <!-- Question Top Meta Bar -->
-          <div class="bg-slate-50 px-4 sm:px-6 py-3.5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
-            <div class="flex flex-wrap items-center gap-2">
-            <button type="button" id="btn-prev-q" onclick="prevQuestion()"
-              class="px-3.5 py-2.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold text-xs sm:text-sm transition flex items-center gap-1 disabled:opacity-40 disabled:pointer-events-none">
-              <span>←</span>
-              <span>Sebelumnya</span>
-            </button>
-            <button type="button" id="btn-flag-q" onclick="toggleFlagCurrent()"
-              class="px-3.5 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-950 font-bold text-xs sm:text-sm transition flex items-center gap-1 shadow-sm">
-              <span>⚑</span>
-              <span id="btn-flag-label">Ragu-ragu</span>
-            </button>
-            <button type="button" id="btn-clear-q" onclick="clearCurrentSelection()"
-              class="hidden px-3 py-2.5 rounded-xl bg-white hover:bg-rose-50 text-rose-700 border border-rose-300 font-bold text-xs sm:text-sm transition flex items-center gap-1">
-              <span>✕</span>
-              <span>Hapus Pilihan</span>
-            </button>
+          <div class="bg-slate-50 px-4 sm:px-6 py-3.5 border-b border-slate-200 space-y-2.5">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <span id="q-subtest-badge" class="px-3 py-1 rounded-lg text-xs font-extrabold tracking-wide bg-[#0F2C59] text-white">TWK</span>
+                <span id="q-topic-badge" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-100 text-[#0F2C59]">Topik</span>
+                <span id="q-flag-indicator" class="hidden px-2.5 py-1 rounded-lg text-xs font-extrabold bg-amber-200 text-amber-950">⚑ Ditandai Ragu</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs sm:text-sm font-extrabold text-slate-700">
+                  Soal <span id="q-current-num" class="text-[#0F2C59]">1</span> / <span id="q-total-num">110</span>
+                </span>
+                <button type="button" id="btn-toggle-room-mode" onclick="toggleActiveSessionMode()"
+                  class="px-2.5 py-1 rounded-lg bg-white hover:bg-blue-50 text-[#0F2C59] border border-slate-300 text-[11px] font-bold transition">
+                  Ganti ke Mode Belajar
+                </button>
+              </div>
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200/80 text-[11px] sm:text-xs text-slate-600">
+              <div id="q-scoring-rule">Bobot Nilai: Jawaban Benar = <strong class="text-emerald-700">+5</strong>, Salah/Kosong = <strong>0</strong></div>
+              <button type="button" id="btn-show-hint" onclick="toggleHintCurrent()"
+                class="hidden px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold text-[11px] transition">
+                💡 Tampilkan Petunjuk (Hint)
+              </button>
+            </div>
           </div>
 
           <!-- Question Body -->
@@ -952,13 +961,24 @@
             <option value="save_bank">Simpan ke Bank Soal Kustom Saya</option>
           </select>
         </div>
+
+        <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-2 text-xs">
+          <div>
+            <span class="font-bold text-slate-800 block">Status Mesin Generator:</span>
+            <span id="gen-engine-status-text" class="text-[11px] text-slate-500">Mode Hibrida (Gemini AI + Parametrik Instan)</span>
+          </div>
+          <button type="button" onclick="closeModal('modal-generator'); openWebAppSettingsModal();"
+            class="px-3 py-1.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-[#0F2C59] font-bold text-[11px] shrink-0">
+            🔑 Atur API Key
+          </button>
+        </div>
       </div>
 
       <div class="flex justify-end gap-2.5 mt-6">
         <button type="button" onclick="closeModal('modal-generator')" class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs sm:text-sm transition">
           Batal
         </button>
-        <button type="button" onclick="executeCustomGenerator()" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm transition">
+        <button type="button" id="btn-submit-generator" onclick="executeCustomGenerator()" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm transition">
           ⚡ Proses Generate Sekarang
         </button>
       </div>
@@ -1229,6 +1249,37 @@
               Simpan Pengaturan Cookie
             </button>
           </div>
+        </div>
+
+        <!-- Section D: Environment & Gemini API Key (Safe Client-Side Storage for GitHub Pages) -->
+        <div class="p-4 rounded-2xl border border-indigo-200 bg-indigo-50/50 space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h4 class="text-sm font-extrabold text-slate-900">🔑 Konfigurasi Environment &amp; Gemini API Key</h4>
+              <p class="text-[11px] text-slate-600">Simpan API Key secara aman di browser perangkat Anda (tidak pernah ter-upload ke repository GitHub publik).</p>
+            </div>
+            <span id="api-key-status-badge" class="px-2.5 py-1 rounded-lg bg-slate-200 text-slate-700 text-[11px] font-bold">
+              Mode Lokal / Otomatis
+            </span>
+          </div>
+
+          <div class="flex flex-col sm:flex-row gap-2">
+            <input type="password" id="input-gemini-api-key" placeholder="Tempel API Key Gemini Anda di sini..."
+              class="flex-1 px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-mono-code text-slate-900" />
+            <div class="flex gap-1.5">
+              <button type="button" onclick="saveUserGeminiApiKey()"
+                class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition">
+                Simpan Key
+              </button>
+              <button type="button" onclick="clearUserGeminiApiKey()"
+                class="px-3 py-2 rounded-xl bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 font-bold text-xs transition">
+                Hapus
+              </button>
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-500 leading-relaxed">
+            <strong>Catatan Keamanan:</strong> Jangan menuliskan API Key langsung ke dalam file HTML/JS yang di-upload ke repository GitHub <em>Public</em>. Gunakan file <code>env.js</code> lokal (yang sudah diblokir oleh <code>.gitignore</code>) atau simpan melalui kolom di atas.
+          </p>
         </div>
       </div>
     </div>
@@ -2175,7 +2226,8 @@
       LAST_RESULT: 'cat_bkn_last_result_v2',
       RESULT_HISTORY: 'cat_bkn_result_history_v2',
       DAILY_STATE: 'cat_bkn_daily_state_v2',
-      COOKIE_PREFS: 'cat_bkn_cookie_prefs_v1'
+      COOKIE_PREFS: 'cat_bkn_cookie_prefs_v1',
+      USER_API_KEY: 'cat_bkn_user_gemini_api_key_v1'
     };
 
     const APP_LOGO_SVG_STRING = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
@@ -2997,7 +3049,7 @@
             cls += 'bg-[#16A34A] text-white border-emerald-700';
           }
         } else if (isStudy && pendIdx !== undefined) {
-          cls += 'bg-blue-200 text-[#0F2C59] border-blue-400';
+          cls += 'bg-blue-100 text-[#0F2C59] border-blue-400';
         } else {
           cls += 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300';
         }
@@ -3014,11 +3066,15 @@
 
       if (activeSession.mode === 'study') {
         if (activeSession.answers[q.id] !== undefined) {
-          showToast('Jawaban soal ini sudah dikonfirmasi. Lanjutkan ke soal berikutnya atau tinjau pembahasannya.', 'info');
+          showToast('Jawaban soal ini sudah dikonfirmasi. Lanjutkan ke soal berikutnya.', 'info');
           return;
         }
         if (!activeSession.pendingSelections) activeSession.pendingSelections = {};
-        activeSession.pendingSelections[q.id] = optIdx;
+        if (activeSession.pendingSelections[q.id] === optIdx) {
+          delete activeSession.pendingSelections[q.id];
+        } else {
+          activeSession.pendingSelections[q.id] = optIdx;
+        }
       } else {
         activeSession.answers[q.id] = optIdx;
       }
@@ -3031,11 +3087,9 @@
       if (!activeSession || activeSession.isFinished || activeSession.mode !== 'study') return;
       const q = activeSession.questions[activeSession.currentIndex];
       if (!q) return;
-
-      if (activeSession.answers[q.id] !== undefined) return;
       const pendIdx = activeSession.pendingSelections ? activeSession.pendingSelections[q.id] : undefined;
       if (pendIdx === undefined) {
-        showToast('Pilih salah satu opsi A–E terlebih dahulu sebelum konfirmasi.', 'warning');
+        showToast('Pilih salah satu opsi jawaban (A–E) terlebih dahulu.', 'warning');
         return;
       }
 
@@ -3043,172 +3097,241 @@
       delete activeSession.pendingSelections[q.id];
 
       const earned = q.options[pendIdx]?.score ?? 0;
-      if (earned === 5) {
-        weakQuestionIds.delete(q.id);
-      } else {
+      if (earned < 5) {
         weakQuestionIds.add(q.id);
+      } else if (!activeSession.flags[q.id]) {
+        weakQuestionIds.delete(q.id);
       }
       saveWeakIds();
       saveActiveSession();
       renderExamWorkspace();
     }
 
-    // =========================================================================
-    // 11B. WEB APP MANIFEST, LOGO EXPORT, COOKIES & PERMISSIONS ENGINE
-    // =========================================================================
-    function setAppCookie(name, value, days = 30) {
-      const expires = new Date(Date.now() + days * 864e5).toUTCString();
-      try {
-        document.cookie = `${encodeURIComponent(name)}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
-      } catch (e) {
-        // Fallback when running inside strict sandboxed preview
-      }
-      safeStorage.setItem(`cookie_mirror_${name}`, JSON.stringify({ value, expires }));
+    const DEFAULT_EMBEDDED_API_KEY = "AQ.Ab8RN6JlBZiYQMYIKpGTQVsTxWLjazzMnCQ8HpkAkcPhc7wYfw";
+
+    function getEffectiveGeminiApiKey() {
+      const envKey = (window.ENV && typeof window.ENV.GEMINI_API_KEY === 'string') ? window.ENV.GEMINI_API_KEY.trim() : '';
+      const storedKey = (safeStorage.getItem(STORAGE_KEYS.USER_API_KEY) || '').trim();
+      return envKey || storedKey || DEFAULT_EMBEDDED_API_KEY;
     }
 
-    function getAppCookie(name) {
-      try {
-        const target = `${encodeURIComponent(name)}=`;
-        const parts = document.cookie ? document.cookie.split('; ') : [];
-        for (let i = 0; i < parts.length; i++) {
-          if (parts[i].startsWith(target)) {
-            return decodeURIComponent(parts[i].substring(target.length));
+    async function generateQuestionsWithGeminiAPI(twkCount, tiuCount, tkpCount) {
+      const effectiveKey = getEffectiveGeminiApiKey();
+
+      // Limit single AI request batch to max 15 items for speed & reliability; remainder filled seamlessly
+      const reqTwk = Math.min(twkCount, 5);
+      const reqTiu = Math.min(tiuCount, 5);
+      const reqTkp = Math.min(tkpCount, 5);
+      const reqTotal = reqTwk + reqTiu + reqTkp;
+      if (reqTotal === 0) return [];
+
+      const promptText = `Buatkan ${reqTotal} soal latihan SKD CPNS terbaru berbahasa Indonesia setara standar resmi BKN: ${reqTwk} soal TWK (Nasionalisme, Integritas, Bela Negara, Pilar Negara, Bahasa Indonesia), ${reqTiu} soal TIU (Analogi, Silogisme, Analitis, Deret, Kuantitatif), dan ${reqTkp} soal TKP (Pelayanan Publik, Jejaring Kerja, Sosial Budaya, TIK, Profesionalisme, Anti Radikalisme). Setiap soal wajib memiliki tepat 5 opsi jawaban. Untuk TWK dan TIU: 1 opsi bernilai score 5 dan 4 opsi lainnya bernilai score 0. Untuk TKP: kelima opsi memiliki gradasi nilai unik yaitu 5, 4, 3, 2, dan 1.`;
+
+      const payload = {
+        contents: [{ parts: [{ text: promptText }] }],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "ARRAY",
+            items: {
+              type: "OBJECT",
+              properties: {
+                subtest: { type: "STRING" },
+                topic: { type: "STRING" },
+                question: { type: "STRING" },
+                hint: { type: "STRING" },
+                explanation: { type: "STRING" },
+                options: {
+                  type: "ARRAY",
+                  items: {
+                    type: "OBJECT",
+                    properties: {
+                      text: { type: "STRING" },
+                      score: { type: "INTEGER" }
+                    },
+                    required: ["text", "score"]
+                  }
+                }
+              },
+              required: ["subtest", "topic", "question", "hint", "explanation", "options"]
+            }
           }
         }
-      } catch (e) {
-        // Ignore cookie access errors in sandbox
-      }
-      const mirror = safeStorage.getItem(`cookie_mirror_${name}`);
-      if (mirror) {
+      };
+
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${encodeURIComponent(effectiveKey)}`;
+      const delays = [1000, 2000, 4000];
+
+      for (let attempt = 0; attempt <= delays.length; attempt++) {
         try {
-          return JSON.parse(mirror).value;
-        } catch (e) {
+          const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (!response.ok) {
+            if (attempt < delays.length && (response.status === 429 || response.status >= 500)) {
+              await new Promise(r => setTimeout(r, delays[attempt]));
+              continue;
+            }
+            return null;
+          }
+          const result = await response.json();
+          const rawText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (!rawText) return null;
+          const parsed = JSON.parse(rawText);
+          if (!Array.isArray(parsed) || parsed.length === 0) return null;
+
+          return parsed
+            .filter(item => item && item.question && Array.isArray(item.options) && item.options.length >= 2)
+            .map((item, idx) => {
+              const sub = ['TWK', 'TIU', 'TKP'].includes(String(item.subtest).toUpperCase())
+                ? String(item.subtest).toUpperCase()
+                : 'TWK';
+              return {
+                id: `ai-${Date.now()}-${idx}-${randInt(100, 999)}`,
+                subtest: sub,
+                topic: String(item.topic || sub),
+                question: String(item.question),
+                hint: String(item.hint || ''),
+                explanation: String(item.explanation || 'Pembahasan mengikuti kunci jawaban dengan skor tertinggi.'),
+                options: shuffleArray(item.options.slice(0, 5).map(o => ({
+                  text: String(o.text || ''),
+                  score: Math.min(5, Math.max(0, Number(o.score) || 0))
+                }))),
+                isCustom: true,
+                isGenerated: true
+              };
+            });
+        } catch (err) {
+          if (attempt < delays.length) {
+            await new Promise(r => setTimeout(r, delays[attempt]));
+            continue;
+          }
           return null;
         }
       }
       return null;
     }
 
-    function deleteAppCookie(name) {
-      try {
-        document.cookie = `${encodeURIComponent(name)}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Lax`;
-      } catch (e) {
-        // Ignore
-      }
-      safeStorage.removeItem(`cookie_mirror_${name}`);
-    }
-
-    function loadCookiePreferences() {
-      try {
-        const raw = safeStorage.getItem(STORAGE_KEYS.COOKIE_PREFS);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          cookiePrefs = { ...cookiePrefs, ...parsed };
-        }
-      } catch (e) {
-        // Keep defaults
+    async function buildHybridQuestionSet(twkCount, tiuCount, tkpCount) {
+      const aiQuestions = await generateQuestionsWithGeminiAPI(twkCount, tiuCount, tkpCount);
+      if (!aiQuestions || aiQuestions.length === 0) {
+        return { questions: buildQuestionSet(twkCount, tiuCount, tkpCount), aiCount: 0 };
       }
 
-      if (cookiePrefs.preferences) {
-        const savedMode = getAppCookie('cat_bkn_mode');
-        if ((savedMode === 'study' || savedMode === 'exam') && !activeSession) {
-          selectedHomeMode = savedMode;
-        }
-      }
+      const aiTwk = aiQuestions.filter(q => q.subtest === 'TWK').slice(0, twkCount);
+      const aiTiu = aiQuestions.filter(q => q.subtest === 'TIU').slice(0, tiuCount);
+      const aiTkp = aiQuestions.filter(q => q.subtest === 'TKP').slice(0, tkpCount);
 
-      if (!cookiePrefs.decided) {
-        const banner = document.getElementById('cookie-consent-banner');
-        if (banner) banner.classList.remove('hidden');
-      }
-    }
+      const remTwk = Math.max(0, twkCount - aiTwk.length);
+      const remTiu = Math.max(0, tiuCount - aiTiu.length);
+      const remTkp = Math.max(0, tkpCount - aiTkp.length);
 
-    function syncActiveCookies() {
-      const wib = getWibTimeInfo();
-      setAppCookie('cat_bkn_essential', '1', 365);
-      setAppCookie('cat_bkn_wib_cycle', wib.dateKey, 2);
-      if (cookiePrefs.preferences) {
-        setAppCookie('cat_bkn_mode', selectedHomeMode, 30);
-      } else {
-        deleteAppCookie('cat_bkn_mode');
-      }
-      if (cookiePrefs.analytics) {
-        setAppCookie('cat_bkn_sessions_done', String(resultHistory.length), 90);
-      } else {
-        deleteAppCookie('cat_bkn_sessions_done');
-      }
-      refreshCookieInspectorUI();
-    }
+      const fallbackPart = buildQuestionSet(remTwk, remTiu, remTkp);
+      const fbTwk = fallbackPart.filter(q => q.subtest === 'TWK');
+      const fbTiu = fallbackPart.filter(q => q.subtest === 'TIU');
+      const fbTkp = fallbackPart.filter(q => q.subtest === 'TKP');
 
-    function acceptCookieConsent(level) {
-      cookiePrefs = {
-        decided: true,
-        essential: true,
-        preferences: level === 'all',
-        analytics: level === 'all',
-        updatedAt: new Date().toISOString()
+      const combined = [...aiTwk, ...fbTwk, ...aiTiu, ...fbTiu, ...aiTkp, ...fbTkp];
+      return {
+        questions: combined,
+        aiCount: aiTwk.length + aiTiu.length + aiTkp.length
       };
-      safeStorage.setItem(STORAGE_KEYS.COOKIE_PREFS, JSON.stringify(cookiePrefs));
-      const banner = document.getElementById('cookie-consent-banner');
-      if (banner) banner.classList.add('hidden');
-      syncActiveCookies();
+    }
+
+    async function startQuickGeneratedSession() {
+      const countInput = document.getElementById('quick-gen-count');
+      const subtestSelect = document.getElementById('quick-gen-subtest');
+      const count = Math.min(500, Math.max(1, parseInt(countInput.value, 10) || 20));
+      const subtest = subtestSelect ? subtestSelect.value : 'MIX';
+
+      showToast(`Sedang merakit ${count} soal latihan baru...`, 'info');
+
+      let twk = 0, tiu = 0, tkp = 0, label = '';
+      if (subtest === 'TWK') {
+        twk = count;
+        label = `Latihan Bebas TWK (${count} Soal)`;
+      } else if (subtest === 'TIU') {
+        tiu = count;
+        label = `Latihan Bebas TIU (${count} Soal)`;
+      } else if (subtest === 'TKP') {
+        tkp = count;
+        label = `Latihan Bebas TKP (${count} Soal)`;
+      } else {
+        const split = computeProportionalSplit(count);
+        twk = split.twk;
+        tiu = split.tiu;
+        tkp = split.tkp;
+        label = `Latihan Campuran (${count} Soal)`;
+      }
+
+      const { questions, aiCount } = await buildHybridQuestionSet(twk, tiu, tkp);
+      const dur = Math.max(60, Math.round((count / 110) * 100 * 60));
+      launchNewSession('quick_generated', label, questions, dur);
       showToast(
-        level === 'all'
-          ? 'Seluruh pengaturan cookies telah diaktifkan untuk pengalaman belajar optimal.'
-          : 'Hanya cookie esensial yang diaktifkan.',
+        aiCount > 0
+          ? `${count} soal baru berhasil dibuat (${aiCount} soal fresh dari Gemini AI)!`
+          : `${count} soal baru berhasil di-generate. Selamat berlatih!`,
         'success'
       );
     }
+    async function executeCustomGenerator() {
+      let twk = 0, tiu = 0, tkp = 0;
 
-    function saveCookiePreferencesFromModal() {
-      const prefMode = document.getElementById('cookie-pref-mode').checked;
-      const prefAnalytics = document.getElementById('cookie-pref-analytics').checked;
-      cookiePrefs = {
-        decided: true,
-        essential: true,
-        preferences: prefMode,
-        analytics: prefAnalytics,
-        updatedAt: new Date().toISOString()
-      };
-      safeStorage.setItem(STORAGE_KEYS.COOKIE_PREFS, JSON.stringify(cookiePrefs));
-      const banner = document.getElementById('cookie-consent-banner');
-      if (banner) banner.classList.add('hidden');
-      syncActiveCookies();
-      showToast('Preferensi cookies berhasil disimpan!', 'success');
-    }
-
-    function clearOptionalCookies() {
-      deleteAppCookie('cat_bkn_mode');
-      deleteAppCookie('cat_bkn_sessions_done');
-      document.getElementById('cookie-pref-mode').checked = false;
-      document.getElementById('cookie-pref-analytics').checked = false;
-      saveCookiePreferencesFromModal();
-      showToast('Cookie opsional telah dihapus.', 'info');
-    }
-
-    function refreshCookieInspectorUI() {
-      const prefModeEl = document.getElementById('cookie-pref-mode');
-      const prefAnaEl = document.getElementById('cookie-pref-analytics');
-      const summaryEl = document.getElementById('cookie-active-summary');
-      const boxEl = document.getElementById('cookie-inspector-box');
-      if (prefModeEl) prefModeEl.checked = !!cookiePrefs.preferences;
-      if (prefAnaEl) prefAnaEl.checked = !!cookiePrefs.analytics;
-      if (summaryEl) {
-        summaryEl.textContent = cookiePrefs.preferences && cookiePrefs.analytics
-          ? 'Semua Cookie Aktif'
-          : 'Hanya Cookie Esensial';
+      if (generatorMode === 'prop') {
+        const total = Math.min(500, Math.max(1, parseInt(document.getElementById('gen-total-input').value, 10) || 110));
+        const split = computeProportionalSplit(total);
+        twk = split.twk;
+        tiu = split.tiu;
+        tkp = split.tkp;
+      } else {
+        twk = Math.min(200, Math.max(0, parseInt(document.getElementById('gen-twk-input').value, 10) || 0));
+        tiu = Math.min(200, Math.max(0, parseInt(document.getElementById('gen-tiu-input').value, 10) || 0));
+        tkp = Math.min(200, Math.max(0, parseInt(document.getElementById('gen-tkp-input').value, 10) || 0));
       }
-      if (boxEl) {
-        const activePairs = [
-          `cat_bkn_essential=${getAppCookie('cat_bkn_essential') || '1'}`,
-          `cat_bkn_wib_cycle=${getAppCookie('cat_bkn_wib_cycle') || getWibTimeInfo().dateKey}`
-        ];
-        if (cookiePrefs.preferences) {
-          activePairs.push(`cat_bkn_mode=${getAppCookie('cat_bkn_mode') || selectedHomeMode}`);
-        }
-        if (cookiePrefs.analytics) {
-          activePairs.push(`cat_bkn_sessions_done=${getAppCookie('cat_bkn_sessions_done') || resultHistory.length}`);
-        }
-        boxEl.textContent = `Active Cookies: ${activePairs.join('; ')}`;
+
+      if (twk + tiu + tkp === 0) {
+        showToast('Masukkan minimal 1 soal untuk di-generate.', 'warning');
+        return;
+      }
+
+      const submitBtn = document.getElementById('btn-submit-generator');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = '⏳ Memproses Soal...';
+      }
+
+      const { questions: generated, aiCount } = await buildHybridQuestionSet(twk, tiu, tkp);
+
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '⚡ Proses Generate Sekarang';
+      }
+
+      const target = document.getElementById('gen-action-target').value;
+      closeModal('modal-generator');
+
+      if (target === 'save_bank') {
+        customQuestions.push(...generated);
+        saveCustomQuestions();
+        updateHomeDashboardStats();
+        renderBankTable();
+        showToast(
+          aiCount > 0
+            ? `${generated.length} soal baru (${aiCount} soal AI) disimpan ke Bank Soal!`
+            : `${generated.length} soal baru berhasil di-generate dan disimpan ke Bank Soal!`,
+          'success'
+        );
+      } else {
+        const totalSeconds = Math.max(60, Math.round((generated.length / 110) * 100 * 60));
+        launchNewSession('custom_generated', `Sesi Kustom (${generated.length} Soal)`, generated, totalSeconds);
+        showToast(
+          aiCount > 0
+            ? `Berhasil membuat ${generated.length} soal (${aiCount} soal fresh dari Gemini AI)!`
+            : `Berhasil membuat ${generated.length} soal baru. Selamat berlatih!`,
+          'success'
+        );
       }
     }
 
@@ -3311,7 +3434,60 @@
     function openWebAppSettingsModal() {
       updateWebAppPermissionsUI();
       refreshCookieInspectorUI();
+      refreshApiKeyUI();
       openModal('modal-webapp-settings');
+    }
+
+    function refreshApiKeyUI() {
+      const envKey = (window.ENV && typeof window.ENV.GEMINI_API_KEY === 'string') ? window.ENV.GEMINI_API_KEY.trim() : '';
+      const storedKey = (safeStorage.getItem(STORAGE_KEYS.USER_API_KEY) || '').trim();
+      const badge = document.getElementById('api-key-status-badge');
+      const input = document.getElementById('input-gemini-api-key');
+      const genStatus = document.getElementById('gen-engine-status-text');
+
+      if (input && storedKey) {
+        input.value = storedKey;
+      }
+
+      if (envKey) {
+        if (badge) {
+          badge.textContent = 'Aktif via env.js';
+          badge.className = 'px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 text-[11px] font-bold';
+        }
+        if (genStatus) genStatus.textContent = 'Gemini AI Aktif (env.js) + Parametrik Instan';
+      } else if (storedKey) {
+        if (badge) {
+          badge.textContent = 'Tersimpan di Browser';
+          badge.className = 'px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 text-[11px] font-bold';
+        }
+        if (genStatus) genStatus.textContent = 'Gemini AI Aktif (Browser Key) + Parametrik Instan';
+      } else {
+        if (badge) {
+          badge.textContent = 'Aktif (Konfigurasi Bawaan)';
+          badge.className = 'px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 text-[11px] font-bold';
+        }
+        if (genStatus) genStatus.textContent = 'Gemini AI Aktif (Bawaan) + Parametrik Instan';
+      }
+    }
+
+    function saveUserGeminiApiKey() {
+      const input = document.getElementById('input-gemini-api-key');
+      const val = input ? input.value.trim() : '';
+      if (!val) {
+        showToast('Masukkan API Key terlebih dahulu.', 'warning');
+        return;
+      }
+      safeStorage.setItem(STORAGE_KEYS.USER_API_KEY, val);
+      refreshApiKeyUI();
+      showToast('API Key Gemini berhasil disimpan secara lokal di browser Anda!', 'success');
+    }
+
+    function clearUserGeminiApiKey() {
+      safeStorage.removeItem(STORAGE_KEYS.USER_API_KEY);
+      const input = document.getElementById('input-gemini-api-key');
+      if (input) input.value = '';
+      refreshApiKeyUI();
+      showToast('API Key lokal telah dihapus dari browser.', 'info');
     }
 
     async function updateWebAppPermissionsUI() {
@@ -3487,6 +3663,138 @@
         await toggleWakeLockPermission();
       }
       updateWebAppPermissionsUI();
+    }
+
+    // =========================================================================
+    // 8. COOKIES MANAGEMENT ENGINE
+    // =========================================================================
+    function setAppCookie(name, value, days = 30) {
+      try {
+        const expires = new Date(Date.now() + days * 864e5).toUTCString();
+        document.cookie = `${encodeURIComponent(name)}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
+      } catch (e) {
+        // Ignore cookie restriction in sandboxed environments
+      }
+    }
+
+    function deleteAppCookie(name) {
+      try {
+        document.cookie = `${encodeURIComponent(name)}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Lax`;
+      } catch (e) {
+        // Ignore
+      }
+    }
+
+    function loadCookiePreferences() {
+      try {
+        const raw = safeStorage.getItem(STORAGE_KEYS.COOKIE_PREFS);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          cookiePrefs = {
+            decided: !!parsed.decided,
+            essential: true,
+            preferences: parsed.preferences !== false,
+            analytics: parsed.analytics !== false,
+            updatedAt: parsed.updatedAt || null
+          };
+        }
+      } catch (e) {
+        // Use defaults
+      }
+
+      const banner = document.getElementById('cookie-consent-banner');
+      if (banner) {
+        banner.classList.toggle('hidden', cookiePrefs.decided);
+      }
+
+      const prefModeBox = document.getElementById('cookie-pref-mode');
+      const prefAnalyticsBox = document.getElementById('cookie-pref-analytics');
+      if (prefModeBox) prefModeBox.checked = cookiePrefs.preferences;
+      if (prefAnalyticsBox) prefAnalyticsBox.checked = cookiePrefs.analytics;
+    }
+
+    function syncActiveCookies() {
+      const wibInfo = getWibTimeInfo(Date.now());
+      setAppCookie('cat_bkn_wib_cycle', wibInfo.dateKey, 7);
+      if (cookiePrefs.preferences) {
+        setAppCookie('cat_bkn_mode', selectedHomeMode, 30);
+      } else {
+        deleteAppCookie('cat_bkn_mode');
+      }
+      if (cookiePrefs.analytics) {
+        setAppCookie('cat_bkn_history_count', String(resultHistory.length), 30);
+      } else {
+        deleteAppCookie('cat_bkn_history_count');
+      }
+    }
+
+    function acceptCookieConsent(level) {
+      cookiePrefs = {
+        decided: true,
+        essential: true,
+        preferences: level === 'all',
+        analytics: level === 'all',
+        updatedAt: new Date().toISOString()
+      };
+      safeStorage.setItem(STORAGE_KEYS.COOKIE_PREFS, JSON.stringify(cookiePrefs));
+      const banner = document.getElementById('cookie-consent-banner');
+      if (banner) banner.classList.add('hidden');
+      syncActiveCookies();
+      refreshCookieInspectorUI();
+      showToast(
+        level === 'all'
+          ? 'Seluruh pengaturan cookie Web App telah diaktifkan.'
+          : 'Hanya cookie esensial & siklus reset WIB yang diaktifkan.',
+        'success'
+      );
+    }
+
+    function saveCookiePreferencesFromModal() {
+      const prefModeBox = document.getElementById('cookie-pref-mode');
+      const prefAnalyticsBox = document.getElementById('cookie-pref-analytics');
+      cookiePrefs = {
+        decided: true,
+        essential: true,
+        preferences: prefModeBox ? prefModeBox.checked : true,
+        analytics: prefAnalyticsBox ? prefAnalyticsBox.checked : true,
+        updatedAt: new Date().toISOString()
+      };
+      safeStorage.setItem(STORAGE_KEYS.COOKIE_PREFS, JSON.stringify(cookiePrefs));
+      const banner = document.getElementById('cookie-consent-banner');
+      if (banner) banner.classList.add('hidden');
+      syncActiveCookies();
+      refreshCookieInspectorUI();
+      showToast('Preferensi cookie berhasil disimpan.', 'success');
+    }
+
+    function clearOptionalCookies() {
+      deleteAppCookie('cat_bkn_mode');
+      deleteAppCookie('cat_bkn_history_count');
+      cookiePrefs.preferences = false;
+      cookiePrefs.analytics = false;
+      cookiePrefs.decided = true;
+      cookiePrefs.updatedAt = new Date().toISOString();
+      safeStorage.setItem(STORAGE_KEYS.COOKIE_PREFS, JSON.stringify(cookiePrefs));
+      const prefModeBox = document.getElementById('cookie-pref-mode');
+      const prefAnalyticsBox = document.getElementById('cookie-pref-analytics');
+      if (prefModeBox) prefModeBox.checked = false;
+      if (prefAnalyticsBox) prefAnalyticsBox.checked = false;
+      refreshCookieInspectorUI();
+      showToast('Cookie opsional telah dihapus.', 'info');
+    }
+
+    function refreshCookieInspectorUI() {
+      const box = document.getElementById('cookie-inspector-box');
+      const summary = document.getElementById('cookie-active-summary');
+      if (summary) {
+        summary.textContent = cookiePrefs.preferences || cookiePrefs.analytics ? 'Semua Cookie Aktif' : 'Hanya Esensial';
+      }
+      if (box) {
+        const rawCookie = document.cookie && document.cookie.trim().length > 0
+          ? document.cookie
+          : `cat_bkn_wib_cycle=${dailyState?.wibDateKey || 'active'}; storage_mode=local_fallback`;
+        box.textContent = `Cookie Aktif: ${rawCookie}`;
+      }
     }
 
     function clearCurrentSelection() {
@@ -4036,43 +4344,6 @@
       }
     }
 
-    function executeCustomGenerator() {
-      let twk = 0, tiu = 0, tkp = 0;
-
-      if (generatorMode === 'prop') {
-        const total = Math.min(500, Math.max(1, parseInt(document.getElementById('gen-total-input').value, 10) || 110));
-        const split = computeProportionalSplit(total);
-        twk = split.twk;
-        tiu = split.tiu;
-        tkp = split.tkp;
-      } else {
-        twk = Math.min(200, Math.max(0, parseInt(document.getElementById('gen-twk-input').value, 10) || 0));
-        tiu = Math.min(200, Math.max(0, parseInt(document.getElementById('gen-tiu-input').value, 10) || 0));
-        tkp = Math.min(200, Math.max(0, parseInt(document.getElementById('gen-tkp-input').value, 10) || 0));
-      }
-
-      if (twk + tiu + tkp === 0) {
-        showToast('Masukkan minimal 1 soal untuk di-generate.', 'warning');
-        return;
-      }
-
-      const generated = buildQuestionSet(twk, tiu, tkp);
-      const target = document.getElementById('gen-action-target').value;
-      closeModal('modal-generator');
-
-      if (target === 'save_bank') {
-        customQuestions.push(...generated);
-        saveCustomQuestions();
-        updateHomeDashboardStats();
-        renderBankTable();
-        showToast(`${generated.length} soal baru berhasil di-generate dan disimpan ke Bank Soal!`, 'success');
-      } else {
-        const totalSeconds = Math.max(60, Math.round((generated.length / 110) * 100 * 60));
-        launchNewSession('custom_generated', `Sesi Kustom (${generated.length} Soal)`, generated, totalSeconds);
-        showToast(`Berhasil membuat ${generated.length} soal baru. Selamat berlatih!`, 'success');
-      }
-    }
-
     function renderAddOptionsInputs() {
       const sub = document.getElementById('add-q-subtest').value;
       const container = document.getElementById('add-q-options-container');
@@ -4314,6 +4585,7 @@
       renderBankTable();
       renderHistoryList();
       updateWebAppPermissionsUI();
+      refreshApiKeyUI();
 
       if (lastResult) {
         renderResultsDashboard(lastResult);
