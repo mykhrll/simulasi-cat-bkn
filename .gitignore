@@ -1,0 +1,13 @@
+# File sampah bawaan sistem operasi (macOS & Windows)
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Folder konfigurasi editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# File log & sementara
+*.log
